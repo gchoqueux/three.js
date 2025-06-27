@@ -50,6 +50,7 @@
 		"webgl_interactive_cubes",
 		"webgl_interactive_cubes_gpu",
 		"webgl_interactive_cubes_ortho",
+		"webgl_interactive_displacementmap",
 		"webgl_interactive_lines",
 		"webgl_interactive_points",
 		"webgl_interactive_raycasting_points",
