@@ -32,24 +32,38 @@
 			import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 			import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 			import { DepthSavePass } from 'three/addons/postprocessing/DepthSavePass.js';
+
+			import { TexturePass } from 'three/addons/postprocessing/TexturePass.js';
+
 			import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 			import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 			import { pickWorldPosition } from 'three/addons/utils/DepthTextureUtils.js';
 
 			let stats, container;
 			let camera, scene, renderer, controls, sphere, material;
-			let composer, renderPass, depthSavePass, outPass, renderTarget;
+			let composer, renderPass, depthSavePass, outPass, renderTarget, texturePass;
 
 			const logarithmicDepthBuffer = [ 'linear', 'logarithmic' ];
+
+			const mesures = [];
 
 			const settings = {
 				animate: false,
 				depthBuffer: logarithmicDepthBuffer[ 0 ],
+				rayCaster: false,
+				timePicking: 'ms',
+				showDepthTexture: false
 			};
+
+			const mouseR = new THREE.Vector2();
 
 			const onMouseMouve = ( e ) => {
 
 				mouse.set( e.clientX, e.clientY );
+
+				mouseR.x = ( event.clientX / window.innerWidth ) * 2 - 1;
+
+				mouseR.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
 
 			};
 
@@ -132,9 +146,14 @@
 				depthSavePass = new DepthSavePass();
 				outPass = new OutputPass();
 
+				texturePass = new TexturePass( depthSavePass.renderTarget.texture );
+
+				texturePass.enabled = settings.showDepthTexture;
+
 				composer.addPass( renderPass );
 				composer.addPass( depthSavePass );
 				composer.addPass( outPass );
+ 				composer.addPass( texturePass );
 
 				renderer.domElement.addEventListener( 'mousemove', onMouseMouve, false );
 
@@ -146,6 +165,18 @@
 
 				gui.add( settings, 'animate' );
 
+				gui.add( settings, 'showDepthTexture' ).onChange( ( v ) => {
+
+					texturePass.enabled = v;
+
+				} );
+
+				gui.add( settings, 'rayCaster' ).onChange( ( v ) => {
+
+					mesures.length = 0;
+
+				} );
+
 				gui.add( settings, 'depthBuffer', logarithmicDepthBuffer ).onChange( ( v ) => {
 
 					settings.logarithmicDepthBuffer = v;
@@ -153,12 +184,17 @@
 
 				} );
 
+				gui.add( settings, 'timePicking' ).listen();
+
 			}
+
+			let mesh, foo;
 
 			init();
 			initGui();
 
 			const mouse = new THREE.Vector2();
+
 
 			function init() {
 
@@ -229,12 +265,12 @@
 				plane.rotateX( - Math.PI * 0.5 );
 				plane.castShadow = true;
 				plane.receiveShadow = true;
-				scene.add( plane );
+				// scene.add( plane );
 
 				stats = new Stats();
 				container.appendChild( stats.dom );
 
-				const tMat = new THREE.MeshStandardMaterial( { color: 0xffff22, depthWrite: false } );
+				const tMat = new THREE.MeshStandardMaterial( { color: 0xffff22, depthWrite: false, transparent: true } );
 				sphere = new THREE.Mesh( new THREE.SphereGeometry( 0.3, 32, 32 ), tMat );
 				const ring = new THREE.Mesh( new THREE.TorusGeometry( 1.5, 0.3, 32, 32 ), tMat );
 				ring.scale.z = 0.1;
@@ -244,6 +280,56 @@
 				sphere.receiveShadow = true;
 				scene.add( sphere );
 				sphere.add( ring );
+
+				ring.castShadow = true;
+				ring.receiveShadow = true;
+
+				// sphere.renderOrder = 0;
+
+				const geometry = new THREE.IcosahedronGeometry( 0.3, 8 );
+				const material_ = new THREE.MeshPhongMaterial( { color: 0xffffff } );
+
+				const amount = 13;
+				const count = Math.pow( amount, 3 );
+
+				mesh = new THREE.InstancedMesh( geometry, material_, count );
+
+
+				let i = 0;
+				const offset = ( amount - 1 ) / 2;
+
+				const matrix = new THREE.Matrix4();
+
+				for ( let x = 0; x < amount; x ++ ) {
+
+					for ( let y = 0; y < amount; y ++ ) {
+
+						for ( let z = 0; z < amount; z ++ ) {
+
+							matrix.setPosition( offset - x, offset - y, offset - z );
+
+							mesh.setMatrixAt( i, matrix );
+
+							i ++;
+
+						}
+
+					}
+
+				}
+
+				// scene.add( mesh );
+
+				mesh.castShadow = true;
+				mesh.receiveShadow = true;
+
+				foo = new THREE.Mesh( new THREE.IcosahedronGeometry( 6.0, 100 ), new THREE.MeshStandardMaterial( { color: 0xffffff } ) );
+
+				foo.castShadow = true;
+				foo.receiveShadow = true;
+
+				scene.add( foo );
+
 
 				//
 				window.addEventListener( 'resize', onWindowResize );
@@ -267,13 +353,42 @@
 
 			let r = 0;
 
-
+			const raycaster = new THREE.Raycaster();
 
 			function render() {
 
 				composer.render();
 
-				pickWorldPosition( mouse, renderer, depthSavePass.renderTarget, camera, sphere.position );
+				const startTime = performance.now();
+
+
+				if ( settings.rayCaster ) {
+
+					raycaster.setFromCamera( mouseR, camera );
+
+					const intersection = raycaster.intersectObject( foo );
+
+					if ( intersection[ 0 ] ) {
+
+						sphere.position.copy( intersection[ 0 ].point );
+
+						mesures.push( performance.now() - startTime );
+
+					}
+
+ 				} else {
+
+					pickWorldPosition( mouse, renderer, depthSavePass.renderTarget, camera, sphere.position );
+
+
+					mesures.push( performance.now() - startTime );
+
+ 				}
+
+
+				const moyenne = mesures.reduce( ( a, b ) => a + b, 0 ) / mesures.length;
+
+ 				settings.timePicking = `${moyenne.toFixed( 2 )} ms`;
 
 			}
 
