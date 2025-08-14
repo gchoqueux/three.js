@@ -35,13 +35,17 @@
 
 			import { TexturePass } from 'three/addons/postprocessing/TexturePass.js';
 
+			import { Depth2NormalPass } from 'three/addons/postprocessing/Depth2NormalPass.js';
+
 			import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 			import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
 			import { pickWorldPosition } from 'three/addons/utils/DepthTextureUtils.js';
 
+
+
 			let stats, container;
 			let camera, scene, renderer, controls, sphere, material;
-			let composer, renderPass, depthSavePass, outPass, renderTarget, texturePass;
+			let composer, renderPass, depthSavePass, outPass, renderTarget, texturePass, depth2NormalPass;
 
 			const logarithmicDepthBuffer = [ 'linear', 'logarithmic' ];
 
@@ -144,14 +148,16 @@
 
 				renderPass = new RenderPass( scene, camera );
 				depthSavePass = new DepthSavePass();
+				depth2NormalPass = new Depth2NormalPass( undefined, depthSavePass.renderTarget.texture );
 				outPass = new OutputPass();
 
-				texturePass = new TexturePass( depthSavePass.renderTarget.texture );
+				texturePass = new TexturePass( depth2NormalPass.renderTarget.texture );
 
 				texturePass.enabled = settings.showDepthTexture;
 
 				composer.addPass( renderPass );
 				composer.addPass( depthSavePass );
+				composer.addPass( depth2NormalPass );
 				composer.addPass( outPass );
  				composer.addPass( texturePass );
 
@@ -265,7 +271,7 @@
 				plane.rotateX( - Math.PI * 0.5 );
 				plane.castShadow = true;
 				plane.receiveShadow = true;
-				// scene.add( plane );
+				scene.add( plane );
 
 				stats = new Stats();
 				container.appendChild( stats.dom );
@@ -318,7 +324,7 @@
 
 				}
 
-				// scene.add( mesh );
+				scene.add( mesh );
 
 				mesh.castShadow = true;
 				mesh.receiveShadow = true;
