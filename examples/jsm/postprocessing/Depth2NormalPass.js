@@ -19,6 +19,8 @@ import { Depth2NormalShader } from '../shaders/Depth2NormalShader.js';
 * @three_import import { SavePass } from 'three/addons/postprocessing/SavePass.js';
 */
 
+// WARNING Doesn't work with log depth
+
 class Depth2NormalPass extends SavePass {
 
 	constructor( renderTarget, texture ) {

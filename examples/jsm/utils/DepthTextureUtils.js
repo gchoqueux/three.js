@@ -70,12 +70,15 @@ const buffer = new Float32Array( 4 );
 
 const pickWorldPosition = ( mouse, renderer, renderTarget, camera, target ) => {
 
+
+	const pixelRatio = window.devicePixelRatio;
+
 	const canvasRect = renderer.domElement.getBoundingClientRect();
 
 	const left = mouse.x - canvasRect.left;
 	const bottom = canvasRect.bottom - mouse.y;
 
-	renderer.readRenderTargetPixels( renderTarget, left, bottom, 1, 1, buffer );
+	renderer.readRenderTargetPixels( renderTarget, Math.floor( left * pixelRatio ), Math.floor( bottom * pixelRatio ), 1, 1, buffer );
 
 	const depth = buffer[ 0 ];
 

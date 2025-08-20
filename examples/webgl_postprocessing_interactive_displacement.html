@@ -48,6 +48,7 @@
 			let composer, renderPass, depthSavePass, outPass, renderTarget, texturePass, depth2NormalPass;
 
 			const logarithmicDepthBuffer = [ 'linear', 'logarithmic' ];
+			const buffers = [ 'final', 'depth', 'normal' ];
 
 			const mesures = [];
 
@@ -56,7 +57,7 @@
 				depthBuffer: logarithmicDepthBuffer[ 0 ],
 				rayCaster: false,
 				timePicking: 'ms',
-				showDepthTexture: false
+				buffer: buffers[ 0 ],
 			};
 
 			const mouseR = new THREE.Vector2();
@@ -68,6 +69,44 @@
 				mouseR.x = ( event.clientX / window.innerWidth ) * 2 - 1;
 
 				mouseR.y = - ( event.clientY / window.innerHeight ) * 2 + 1;
+
+			};
+
+			const selectBuffer = ( bufferName ) => {
+
+				switch ( bufferName ) {
+
+					case 'final': {
+
+						texturePass.enabled = false;
+
+						break;
+
+					}
+
+					case 'depth': {
+
+						texturePass.enabled = true;
+
+
+						texturePass.map = depthSavePass.renderTarget.texture;
+
+
+						break;
+
+					}
+
+					case 'normal': {
+
+						texturePass.enabled = true;
+
+						texturePass.map = depth2NormalPass.renderTarget.texture;
+
+						break;
+
+					}
+
+				}
 
 			};
 
@@ -123,7 +162,6 @@
 
 				};
 
-				// console.log('settings.logarithmicDepthBuffer', settings.logarithmicDepthBuffer);
 				renderer = new THREE.WebGLRenderer( {
 					logarithmicDepthBuffer: settings.logarithmicDepthBuffer == logarithmicDepthBuffer[ 1 ] } );
 
@@ -153,7 +191,9 @@
 
 				texturePass = new TexturePass( depth2NormalPass.renderTarget.texture );
 
-				texturePass.enabled = settings.showDepthTexture;
+				texturePass.enabled = false;
+
+				selectBuffer( settings.buffer );
 
 				composer.addPass( renderPass );
 				composer.addPass( depthSavePass );
@@ -169,28 +209,24 @@
 
 				const gui = new GUI();
 
-				gui.add( settings, 'animate' );
+				gui.add( settings, 'animate' ).name( 'animate displacement' );
 
-				gui.add( settings, 'showDepthTexture' ).onChange( ( v ) => {
+				gui.add( settings, 'buffer', buffers ).onChange( selectBuffer );
 
-					texturePass.enabled = v;
-
-				} );
-
-				gui.add( settings, 'rayCaster' ).onChange( ( v ) => {
+				gui.add( settings, 'rayCaster' ).name( 'use rayCaster picking' ).onChange( ( ) => {
 
 					mesures.length = 0;
 
 				} );
 
-				gui.add( settings, 'depthBuffer', logarithmicDepthBuffer ).onChange( ( v ) => {
+				gui.add( settings, 'depthBuffer', logarithmicDepthBuffer ).name( 'depth buffer' ).onChange( ( v ) => {
 
 					settings.logarithmicDepthBuffer = v;
 					initRenderer();
 
 				} );
 
-				gui.add( settings, 'timePicking' ).listen();
+				gui.add( settings, 'timePicking' ).name( 'time picking' ).listen();
 
 			}
 
@@ -289,8 +325,6 @@
 
 				ring.castShadow = true;
 				ring.receiveShadow = true;
-
-				// sphere.renderOrder = 0;
 
 				const geometry = new THREE.IcosahedronGeometry( 0.3, 8 );
 				const material_ = new THREE.MeshPhongMaterial( { color: 0xffffff } );
