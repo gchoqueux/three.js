@@ -23,7 +23,7 @@ import { Depth2NormalShader } from '../shaders/Depth2NormalShader.js';
 
 class Depth2NormalPass extends SavePass {
 
-	constructor( renderTarget, texture ) {
+	constructor( renderTarget, texture, camera ) {
 
 		if ( renderTarget === undefined ) {
 
@@ -40,6 +40,11 @@ class Depth2NormalPass extends SavePass {
 		this.material.fragmentShader = Depth2NormalShader.fragmentShader;
 
 		this.material.uniforms.screenSize = Depth2NormalShader.uniforms.screenSize;
+
+		this.material.uniforms.pMatrixInverse = Depth2NormalShader.uniforms.pMatrixInverse;
+		this.material.uniforms.MatrixWorld = Depth2NormalShader.uniforms.MatrixWorld;
+
+		this.material.uniforms.pMatrixInverse.value.copy( camera.projectionMatrixInverse );
 
 	}
 

@@ -1,5 +1,6 @@
 import {
 	Vector2,
+	Matrix4
 } from 'three';
 
 /**
@@ -21,8 +22,9 @@ const Depth2NormalShader = {
 
 		'tDiffuse': { value: null },
 		'opacity': { value: 1.0 },
-		'screenSize': { value: new Vector2() }
-
+		'screenSize': { value: new Vector2() },
+		'pMatrixInverse': { value: new Matrix4() },
+		'MatrixWorld': { value: new Matrix4() },
 	},
 
 	vertexShader: /* glsl */`
@@ -44,6 +46,14 @@ const Depth2NormalShader = {
 
 		uniform vec2 screenSize;
 
+		// uniform mat3 normalMatrix;
+		// uniform mat4 modelViewMatrix;
+		// uniform mat4 modelViewMatrixInv;
+		uniform mat4 pMatrixInverse;
+
+		uniform mat4 MatrixWorld;
+
+
 		// vec2 screenSize = vec2(100.0, 100.);
 
 		float time = 0.;
@@ -54,7 +64,7 @@ const Depth2NormalShader = {
 		void camera( out vec3 ro, out vec3 rd, in float time, in vec2 p)
 		{
 		    // screen split
-		    p.x -= sign(p.x)*1.77777*0.5;
+		    // p.x -= sign(p.x)*1.77777*0.5;
 
 		    // camera position and target
 		    ro = vec3(0.5, 0.3, 0.5 );
@@ -74,12 +84,36 @@ const Depth2NormalShader = {
 		// "z", "reverse z", etc
 		vec3 getPos( in ivec2 fragCoord, in float depth )
 		{
-		    // vec2 p = (2.0*vec2(fragCoord)-screenSize.xy)/screenSize.y;
-		    vec2 p = (2.0*vec2(fragCoord))/screenSize.y;
+		    vec2 p = (2.0*vec2(fragCoord)-screenSize.xy)/screenSize.y;
+		    // vec2 p = (2.0*vec2(fragCoord))/screenSize.y;
 		    vec3 ro, rd;
 		    camera( ro, rd, time, p );
-		    return depth*rd;
+
+			float z = depth * 2.0 - 1.0;
+
+			vec4 clip = vec4(p, z, 1.0);
+
+			vec4 view = pMatrixInverse * clip;
+    		view /= view.w;
+
+
+			return view.xyz;
+
+		    // return depth*rd;
 		}
+
+		// naive way of computing the normal
+		vec3 computeNormalNaive( const sampler2D depth, in ivec2 p )
+		{
+		    vec3 l1 = getPos(p-ivec2(1,0),texelFetch(depth,p-ivec2(1,0),0).r);
+		    vec3 r1 = getPos(p+ivec2(1,0),texelFetch(depth,p+ivec2(1,0),0).r);
+		    vec3 t1 = getPos(p+ivec2(0,1),texelFetch(depth,p+ivec2(0,1),0).r);
+		    vec3 b1 = getPos(p-ivec2(0,1),texelFetch(depth,p-ivec2(0,1),0).r);
+		    vec3 dpdx = r1-l1;
+		    vec3 dpdy = t1-b1;
+		    return normalize(cross(dpdx,dpdy));
+		}
+
 
 		// computes the normal at pixel "p" based on the deph buffer "depth"
 		vec3 computeNormalImproved( const sampler2D depth, in ivec2 p )
@@ -118,9 +152,14 @@ const Depth2NormalShader = {
 			ivec2 p = ivec2(screenCoordinate);
 
 			// vec4 texel = texture2D( tDiffuse, p );
-			vec3 normal = computeNormalImproved( tDiffuse, p );
+			vec3 vNormalView = computeNormalImproved( tDiffuse, p );
 
-			gl_FragColor = opacity * vec4(normal, 1.0);
+			// vec3 nWorld = normalize(mat3(MatrixWorld) * vNormalView);
+
+			gl_FragColor = opacity * vec4( vNormalView , 1.0);
+
+
+
 		}`
 
 };

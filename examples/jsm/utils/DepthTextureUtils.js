@@ -101,4 +101,19 @@ const pickWorldPosition = ( mouse, renderer, renderTarget, camera, target ) => {
 
 };
 
-export { pickWorldPosition };
+const pickWorldNormal = ( mouse, renderer, renderTarget, target = new Vector3() ) => {
+
+	const pixelRatio = window.devicePixelRatio;
+
+	const canvasRect = renderer.domElement.getBoundingClientRect();
+
+	const left = mouse.x - canvasRect.left;
+	const bottom = canvasRect.bottom - mouse.y;
+
+	renderer.readRenderTargetPixels( renderTarget, Math.floor( left * pixelRatio ), Math.floor( bottom * pixelRatio ), 1, 1, buffer );
+
+	return target.fromArray( buffer );
+
+};
+
+export { pickWorldPosition, pickWorldNormal };

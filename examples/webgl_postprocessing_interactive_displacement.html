@@ -39,9 +39,7 @@
 
 			import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
 			import { OutputPass } from 'three/addons/postprocessing/OutputPass.js';
-			import { pickWorldPosition } from 'three/addons/utils/DepthTextureUtils.js';
-
-
+			import { pickWorldPosition, pickWorldNormal } from 'three/addons/utils/DepthTextureUtils.js';
 
 			let stats, container;
 			let camera, scene, renderer, controls, sphere, material;
@@ -186,7 +184,7 @@
 
 				renderPass = new RenderPass( scene, camera );
 				depthSavePass = new DepthSavePass();
-				depth2NormalPass = new Depth2NormalPass( undefined, depthSavePass.renderTarget.texture );
+				depth2NormalPass = new Depth2NormalPass( undefined, depthSavePass.renderTarget.texture, camera );
 				outPass = new OutputPass();
 
 				texturePass = new TexturePass( depth2NormalPass.renderTarget.texture );
@@ -312,16 +310,23 @@
 				stats = new Stats();
 				container.appendChild( stats.dom );
 
-				const tMat = new THREE.MeshStandardMaterial( { color: 0xffff22, depthWrite: false, transparent: true } );
-				sphere = new THREE.Mesh( new THREE.SphereGeometry( 0.3, 32, 32 ), tMat );
-				const ring = new THREE.Mesh( new THREE.TorusGeometry( 1.5, 0.3, 32, 32 ), tMat );
-				ring.scale.z = 0.1;
+				const tMat = new THREE.MeshStandardMaterial( { color: 0xff0022, depthWrite: false, transparent: true } );
+				sphere = new THREE.Mesh( new THREE.SphereGeometry( 0.05, 32 ), tMat );
+				const l = 1;
+				const ring = new THREE.Mesh( new THREE.CylinderGeometry( 0.02, 0.02, l ), tMat );
+				// ring.scale.z = 0.1;
 				ring.castShadow = true;
 				ring.receiveShadow = true;
+
+				ring.rotateX( Math.PI * 0.5 );
+				ring.translateY( l * 0.5 );
+
 				sphere.castShadow = true;
 				sphere.receiveShadow = true;
 				scene.add( sphere );
 				sphere.add( ring );
+
+				// sphere.add( new THREE.AxesHelper( 3 ) );
 
 				ring.castShadow = true;
 				ring.receiveShadow = true;
@@ -395,7 +400,11 @@
 
 			const raycaster = new THREE.Raycaster();
 
+			const matrix = new THREE.Matrix3();
+
 			function render() {
+
+				depth2NormalPass.material.uniforms.MatrixWorld.value.copy( camera.matrixWorld );
 
 				composer.render();
 
@@ -420,6 +429,25 @@
 
 					pickWorldPosition( mouse, renderer, depthSavePass.renderTarget, camera, sphere.position );
 
+					const dir = pickWorldNormal( mouse, renderer, depth2NormalPass.renderTarget );
+
+					// dir.multiplyScalar( 0.5 ).addScalar( 0.5 );
+
+					// dir.normalize().applyNormalMatrix( camera.normalMatrix ).normalize();
+					// console.log('camera', camera);
+
+
+					// dir.applyNormalMatrix( camera.normalMatrix.clone().invert() );
+
+
+					matrix.setFromMatrix4( camera.matrixWorld );
+
+					dir.applyMatrix3( matrix ); //.normalize();
+
+
+					const target = sphere.position.clone().add( dir ); // point visé
+
+					sphere.lookAt( target );
 
 					mesures.push( performance.now() - startTime );
 
